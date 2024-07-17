@@ -15,6 +15,7 @@
     "moment": "^2.30.1",
     "node-telegram-bot-api": "^0.66.0",
     "npm": "^10.8.2",
-    "openai": "^4.52.7"
+    "openai": "^4.52.7",
+    "winston": "^3.13.1"
   }
 }
