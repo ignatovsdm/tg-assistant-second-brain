@@ -1,61 +1,67 @@
-const OpenAI = require('openai');
-const moment = require('moment');
-const { OPENAI_API_KEY, PROMPT_TEMPLATE } = require('./config');
+const fs = require('fs');
+const path = require('path');
+const TelegramBot = require('node-telegram-bot-api');
+const { TELEGRAM_BOT_TOKEN, BASE_DIR } = require('./config');
+const MyOpenAi = require('./myOpenAi');
 const logger = require('./logger');
 
-class MyOpenAi {
-    constructor(apiKey) {
-        this.openai = new OpenAI({ apiKey });
-        logger.debug('MyOpenAi instance created');
+class MyTelegram {
+    constructor(token, openAiInstance) {
+        this.bot = new TelegramBot(token, { polling: true });
+        this.openAiInstance = openAiInstance;
+        logger.debug('MyTelegram instance created');
+        this.initializeBot();
     }
 
-    async processMessage(message) {
-        logger.info(`Обрабатываю сообщение: ${message}`);
-        logger.debug(`Message received for processing: ${message}`);
+    initializeBot() {
+        this.bot.on('message', async (msg) => {
+            const chatId = msg.chat.id;
+            const text = msg.text;
 
-        const prompt = `${PROMPT_TEMPLATE} ${message}`;
-        logger.debug(`Generated prompt: ${prompt}`);
+            logger.info(`Received message: ${text}`);
+            logger.debug(`Message details: ${JSON.stringify(msg)}`);
 
-        try {
-            const response = await this.openai.chat.completions.create({
-                model: "gpt-4-turbo",
-                messages: [
-                    { role: "system", content: "You are a helpful assistant." },
-                    { role: "user", content: prompt }
-                ],
-                max_tokens: 1500,
-                temperature: 0.7,
-                top_p: 1,
-                frequency_penalty: 0,
-                presence_penalty: 0
-            });
-
-            logger.debug(`OpenAI API response: ${JSON.stringify(response)}`);
-            let result = response.choices[0].message.content;
-            logger.debug(`Generated content: ${result}`);
-
-            // Validate and ensure that ### Links block is unchanged
-            const linksBlock = "### Links\n1. ";
-            if (!result.includes(linksBlock)) {
-                logger.error("Invalid response structure: missing ### Links block");
-                throw new Error("Invalid response structure: missing ### Links block");
+            if (text.startsWith('/')) {
+                this.bot.sendMessage(chatId, `Команда "${text}" получена. Файл не создан.`);
+                logger.info(`Command received: ${text}`);
+                return;
             }
 
-            const [contentBeforeLinks] = result.split(linksBlock);
-            result = `${contentBeforeLinks}${linksBlock}`;
+            this.ensureDirectoryExistence(BASE_DIR);
+            const sanitizedFileName = this.sanitizeFileName(text);
+            logger.debug(`Sanitized file name: ${sanitizedFileName}`);
 
-            const currentDate = moment().format('YYYY-MM-DD');
-            const currentTime = moment().format('HH:mm');
+            try {
+                const generatedContent = await this.openAiInstance.processMessage(text);
+                const filePath = path.join(BASE_DIR, `${sanitizedFileName}.md`);
+                fs.writeFileSync(filePath, generatedContent, 'utf8');
+                logger.info(`Результат успешно сохранен в файл: ${filePath}`);
+                logger.debug(`Generated file content: ${generatedContent}`);
 
-            result = result.replace('{{date:YYYY-MM-DD}}', currentDate).replace('{{time:HH:mm}}', currentTime);
+                const responseMessage = `Идея отправлена в ChatGPT. Результат обработан. Файл сохранен с названием: ${sanitizedFileName}.md\n\nТело файла:\n${generatedContent}`;
+                this.bot.sendMessage(chatId, responseMessage);
+                logger.info(`File created and processed: ${filePath}`);
+            } catch (error) {
+                this.bot.sendMessage(chatId, `Произошла ошибка при обработке вашего сообщения.`);
+                logger.error(`Error processing message: ${error}`);
+            }
+        });
 
-            logger.debug(`Final generated content: ${result}`);
-            return result;
-        } catch (error) {
-            logger.error(`Ошибка при обработке сообщения ${message}: ${error}`);
-            throw error;
+        logger.info('Бот запущен...');
+    }
+
+    ensureDirectoryExistence(dir) {
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+            logger.debug(`Directory created: ${dir}`);
         }
+    }
+
+    sanitizeFileName(name) {
+        const sanitized = name.replace(/[^a-zA-Zа-яА-Я0-9-_ ]/g, '');
+        logger.debug(`Sanitized file name: ${sanitized}`);
+        return sanitized;
     }
 }
 
-module.exports = MyOpenAi;
+module.exports = MyTelegram;

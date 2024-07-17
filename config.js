@@ -4,7 +4,7 @@ dotenv.config();
 module.exports = {
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-    BASE_DIR: '/Users/sam/myLib/my-library/from telegram',
+    BASE_DIR: process.env.BASE_DIR,
     LOG_FILE: 'bot.log',
     PROMPT_TEMPLATE: `
 As input you receive a text string. Your task is to form up to 5 main tags for the received text, which convey the meaning of what is being discussed as fully as possible. You can use some other word that is the most matches the meaning of the text phrase.
