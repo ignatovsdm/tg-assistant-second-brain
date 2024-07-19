@@ -141,7 +141,7 @@ function executeGitCommands(fileName) {
     const commitMessage = `${moment().format('YYYY-MM-DD HH:mm')} Commit from bot`;
     const commands = `
         cd ${gitRepoDir} &&
-        git pull &&
+        git pull origin master &&
         git add . &&
         git commit -m "${commitMessage}" &&
         git push origin master
@@ -154,7 +154,6 @@ function executeGitCommands(fileName) {
         }
         if (stderr) {
             logger.error(`Git stderr: ${stderr}`);
-            return;
         }
         logger.info(`Git stdout: ${stdout}`);
     });
@@ -178,15 +177,35 @@ bot.on('message', async (msg) => {
 
     try {
         const generatedContent = await processMessage(text);
-        const filePath = path.join(baseDir, `${sanitizedFileName}.md`);
-        fs.writeFileSync(filePath, generatedContent, 'utf8');
-        logger.info(`Результат успешно сохранен в файл: ${filePath}`);
 
-        executeGitCommands(sanitizedFileName);
+        if (text.length > 230) {
+            // Logic for long messages
+            const dateFileName = moment().format('DD-MM-YYYY');
+            const dateFilePath = path.join(baseDir, `${dateFileName}.md`);
 
-        const responseMessage = `Идея отправлена в ChatGPT. Результат обработан. Файл сохранен с названием: ${sanitizedFileName}.md\n\nТело файла:\n${generatedContent}`;
-        bot.sendMessage(chatId, responseMessage);
-        logger.info(`File created and processed: ${filePath}`);
+            if (fs.existsSync(dateFilePath)) {
+                fs.appendFileSync(dateFilePath, `\n\n${generatedContent}`, 'utf8');
+                logger.info(`Результат успешно дополнен в файл: ${dateFilePath}`);
+            } else {
+                fs.writeFileSync(dateFilePath, generatedContent, 'utf8');
+                logger.info(`Результат успешно сохранен в новый файл: ${dateFilePath}`);
+            }
+
+            executeGitCommands(dateFileName);
+            const responseMessage = `Идея отправлена в ChatGPT. Результат обработан. Файл сохранен с названием: ${dateFileName}.md\n\nТело файла:\n${generatedContent}`;
+            bot.sendMessage(chatId, responseMessage);
+            logger.info(`File created and processed: ${dateFilePath}`);
+        } else {
+            // Logic for short messages
+            const filePath = path.join(baseDir, `${sanitizedFileName}.md`);
+            fs.writeFileSync(filePath, generatedContent, 'utf8');
+            logger.info(`Результат успешно сохранен в файл: ${filePath}`);
+
+            executeGitCommands(sanitizedFileName);
+            const responseMessage = `Идея отправлена в ChatGPT. Результат обработан. Файл сохранен с названием: ${sanitizedFileName}.md\n\nТело файла:\n${generatedContent}`;
+            bot.sendMessage(chatId, responseMessage);
+            logger.info(`File created and processed: ${filePath}`);
+        }
     } catch (error) {
         bot.sendMessage(chatId, `Произошла ошибка при обработке вашего сообщения.`);
         logger.error(`Error processing file: ${error}`);
