@@ -5,6 +5,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const OpenAI = require('openai');
 const moment = require('moment');
 const winston = require('winston');
+const { exec } = require('child_process');
 
 dotenv.config();
 
@@ -135,6 +136,28 @@ async function processMessage(message) {
     }
 }
 
+function executeGitCommands(fileName) {
+    const commitMessage = `${moment().format('YYYY-MM-DD HH:mm')} Commit from bot`;
+    const commands = `
+        git pull
+        git add .
+        git commit -m "${commitMessage}"
+        git pull origin master
+    `;
+
+    exec(commands, (error, stdout, stderr) => {
+        if (error) {
+            logger.error(`Ошибка выполнения Git команд: ${error.message}`);
+            return;
+        }
+        if (stderr) {
+            logger.error(`Git stderr: ${stderr}`);
+            return;
+        }
+        logger.info(`Git stdout: ${stdout}`);
+    });
+}
+
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
@@ -156,6 +179,8 @@ bot.on('message', async (msg) => {
         const filePath = path.join(baseDir, `${sanitizedFileName}.md`);
         fs.writeFileSync(filePath, generatedContent, 'utf8');
         logger.info(`Результат успешно сохранен в файл: ${filePath}`);
+
+        executeGitCommands(sanitizedFileName);
 
         const responseMessage = `Идея отправлена в ChatGPT. Результат обработан. Файл сохранен с названием: ${sanitizedFileName}.md\n\nТело файла:\n${generatedContent}`;
         bot.sendMessage(chatId, responseMessage);
