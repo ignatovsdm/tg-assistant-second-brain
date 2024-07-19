@@ -119,6 +119,7 @@ async function processMessage(message) {
         // Validate and ensure that ### Links block is unchanged
         const linksBlock = "### Links\n1. ";
         if (!result.includes(linksBlock)) {
+            logger.error(`Invalid response structure: missing ### Links block. Full response: ${result}`);
             throw new Error("Invalid response structure: missing ### Links block");
         }
 
@@ -183,16 +184,18 @@ bot.on('message', async (msg) => {
             const dateFileName = moment().format('DD-MM-YYYY');
             const dateFilePath = path.join(baseDir, `${dateFileName}.md`);
 
+            const contentToSave = `${text}\n\n${generatedContent}`;
+
             if (fs.existsSync(dateFilePath)) {
-                fs.appendFileSync(dateFilePath, `\n\n${generatedContent}`, 'utf8');
+                fs.appendFileSync(dateFilePath, `\n\n${contentToSave}`, 'utf8');
                 logger.info(`Результат успешно дополнен в файл: ${dateFilePath}`);
             } else {
-                fs.writeFileSync(dateFilePath, generatedContent, 'utf8');
+                fs.writeFileSync(dateFilePath, contentToSave, 'utf8');
                 logger.info(`Результат успешно сохранен в новый файл: ${dateFilePath}`);
             }
 
             executeGitCommands(dateFileName);
-            const responseMessage = `Идея отправлена в ChatGPT. Результат обработан. Файл сохранен с названием: ${dateFileName}.md\n\nТело файла:\n${generatedContent}`;
+            const responseMessage = `Идея отправлена в ChatGPT. Результат обработан. Файл сохранен с названием: ${dateFileName}.md\n\nТело файла:\n${contentToSave}`;
             bot.sendMessage(chatId, responseMessage);
             logger.info(`File created and processed: ${dateFilePath}`);
         } else {
