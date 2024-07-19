@@ -4,15 +4,63 @@ const TelegramBot = require('node-telegram-bot-api');
 const moment = require('moment');
 const fs = require('fs');
 const logger = require('./logger');
-const { processMessage } = require('./openaiService');
+const { processMessage, summarizeSubtitles } = require('./openaiService');
 const { executeGitCommands } = require('./gitService');
 const { ensureDirectoryExistence, sanitizeFileName } = require('./utils');
+const ytdl = require('ytdl-core');
+const { getSubtitles } = require('youtube-captions-scraper');
 
 dotenv.config();
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: false });
 const baseDir = process.env.BASE_DIR;
+const youtubeSubDir = path.join(baseDir, 'youtube-sub');
+const youtubeSummaryDir = path.join(baseDir, 'youtube');
+const TOKEN_LIMIT = 25000; // Добавлено объявление переменной
+
+async function downloadSubtitles(videoUrl, chatId) {
+    try {
+        logger.debug(`Starting subtitle download for URL: ${videoUrl}`);
+        const videoId = ytdl.getURLVideoID(videoUrl);
+        const videoInfo = await ytdl.getInfo(videoId);
+        const title = sanitizeFileName(videoInfo.videoDetails.title);
+
+        logger.debug(`Video title: ${title}`);
+        let subtitles;
+        try {
+            subtitles = await getSubtitles({ videoID: videoId, lang: 'ru' });
+            logger.debug('Russian subtitles found.');
+        } catch {
+            logger.info('Russian subtitles not available, trying English subtitles.');
+            subtitles = await getSubtitles({ videoID: videoId, lang: 'en' });
+            logger.debug('English subtitles found.');
+        }
+
+        const subtitlesText = subtitles.map(sub => `${sub.start} --> ${sub.end}\n${sub.text}\n\n`).join('');
+        ensureDirectoryExistence(youtubeSubDir);
+        const filePath = path.join(youtubeSubDir, `${title}.md`);
+
+        fs.writeFileSync(filePath, subtitlesText, 'utf8');
+
+        logger.info(`Subtitles downloaded and saved to ${filePath}`);
+        bot.sendMessage(chatId, `Субтитры скачаны и сохранены в файл: ${filePath}`);
+
+        if (subtitlesText.length > TOKEN_LIMIT) {
+            bot.sendMessage(chatId, `Субтитры большие, начинается поэтапный анализ...`);
+            const summaryFilePath = await summarizeSubtitles(subtitlesText, videoInfo.videoDetails.title, youtubeSummaryDir);
+            bot.sendMessage(chatId, `Суммаризация видео завершена и сохранена в файл: ${summaryFilePath}`);
+        } else {
+            const summaryFilePath = await summarizeSubtitles(subtitlesText, videoInfo.videoDetails.title, youtubeSummaryDir);
+            bot.sendMessage(chatId, `Суммаризация видео завершена и сохранена в файл: ${summaryFilePath}`);
+        }
+
+        executeGitCommands(title);
+    } catch (error) {
+        logger.error('Error downloading subtitles:', error);
+        bot.sendMessage(chatId, 'Произошла ошибка при скачивании субтитров.');
+    }
+}
 
 function startPolling() {
     bot.startPolling();
@@ -29,6 +77,11 @@ function startPolling() {
             return;
         }
 
+        if (text.startsWith('https://www.youtube.com/') || text.startsWith('https://youtu.be/')) {
+            await downloadSubtitles(text, chatId);
+            return;
+        }
+
         ensureDirectoryExistence(baseDir);
         const sanitizedFileName = sanitizeFileName(text);
         logger.info(`Sanitized file name: ${sanitizedFileName}`);
@@ -37,7 +90,6 @@ function startPolling() {
             const generatedContent = await processMessage(text);
 
             if (text.length > 230) {
-                // Logic for long messages
                 const dateFileName = moment().format('DD-MM-YYYY');
                 const dateFilePath = path.join(baseDir, `${dateFileName}.md`);
 
@@ -56,7 +108,6 @@ function startPolling() {
                 bot.sendMessage(chatId, responseMessage);
                 logger.info(`File created and processed: ${dateFilePath}`);
             } else {
-                // Logic for short messages
                 const filePath = path.join(baseDir, `${sanitizedFileName}.md`);
                 fs.writeFileSync(filePath, generatedContent, 'utf8');
                 logger.info(`Результат успешно сохранен в файл: ${filePath}`);

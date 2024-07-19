@@ -1,0 +1,74 @@
+Please provide a detailed analysis of the following YouTube video subtitles.
+
+{{subtitles}}
+
+
+Include all important points, details, and examples to convey the full essence of the video.
+
+Reply in Russian.
+
+Use the following template to structure the result of your analysis:
+
+# Main Ideas from [Video Title]
+
+## 1. Introduction
+- Brief summary of the video's topic and purpose.
+- Introduction of key concepts or themes.
+
+## 2. Key Points
+### [Key Point 1]
+- Detailed explanation of the first key point.
+- Important details and examples.
+
+### [Key Point 2]
+- Detailed explanation of the second key point.
+- Important details and examples.
+
+### [Key Point 3]
+- Detailed explanation of the third key point.
+- Important details and examples.
+
+### [Key Point 4]
+- Detailed explanation of the nth key point.
+- Important details and examples.
+
+### [Key Point 5]
+- Detailed explanation of the nth key point.
+- Important details and examples.
+
+### [Key Point 6]
+- Detailed explanation of the nth key point.
+- Important details and examples.
+
+### [Key Point 7]
+- Detailed explanation of the nth key point.
+- Important details and examples.
+
+### [Key Point 8]
+- Detailed explanation of the nth key point.
+- Important details and examples.
+
+### [Key Point 9]
+- Detailed explanation of the nth key point.
+- Important details and examples.
+
+### [Key Point 10]
+- Detailed explanation of the nth key point.
+- Important details and examples.
+
+## 3. Summary
+- Brief recap of the main ideas discussed in the video.
+- Final thoughts or conclusions.
+
+## 4. Additional Notes
+- Any additional insights or noteworthy points.
+- References to other related materials or videos.
+
+## 5. Actionable Steps
+- Suggested actions or steps to take based on the video's content.
+- Practical applications of the key points.
+
+## 6. Questions for Further Reflection
+- Questions to ponder or discuss further.
+- Points to consider for deeper understanding.
+
