@@ -14,6 +14,7 @@ const bot = new TelegramBot(token, { polling: true });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const baseDir = process.env.BASE_DIR;
 const logLevel = process.env.LOG_LEVEL || 'info';
+const gitRepoDir = process.env.GIT_REPO_DIR;
 
 const promptTemplate = `
 As input you receive a text string. Your task is to form up to 5 main tags for the received text, which convey the meaning of what is being discussed as fully as possible. You can use some other word that is the most matches the meaning of the text phrase.
@@ -139,9 +140,10 @@ async function processMessage(message) {
 function executeGitCommands(fileName) {
     const commitMessage = `${moment().format('YYYY-MM-DD HH:mm')} Commit from bot`;
     const commands = `
-        git pull
-        git add .
-        git commit -m "${commitMessage}"
+        cd ${gitRepoDir} &&
+        git pull &&
+        git add . &&
+        git commit -m "${commitMessage}" &&
         git pull origin master
     `;
 
