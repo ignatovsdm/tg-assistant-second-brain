@@ -144,7 +144,7 @@ function executeGitCommands(fileName) {
         git pull &&
         git add . &&
         git commit -m "${commitMessage}" &&
-        git pull origin master
+        git push origin master
     `;
 
     exec(commands, (error, stdout, stderr) => {
